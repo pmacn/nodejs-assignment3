@@ -6,6 +6,17 @@ const customerAddresses = require('./m3-customer-address-data.json')
 const url = 'mongodb://database/'
 const batchSize = parseInt(process.argv[2]) || 1000
 
+function partition(input, size)
+{
+    var output = [];
+    for (var i = 0; i < input.length; i += size)
+    {
+        output[output.length] = input.slice(i, i + size);
+    }
+
+    return output;
+}
+
 let tasks = []
 mongodb.MongoClient.connect(url, (error, client) => {
     if(error) {
@@ -15,18 +26,18 @@ mongodb.MongoClient.connect(url, (error, client) => {
 
     console.log('Connected to db')
     let db = client.db('edx-course-db')
-    customers.forEach((customer, index, list) => {
+    customers.forEach((customer, index) => {
         customers[index] = Object.assign(customer, customerAddresses[index])
-        
-        if(index % batchSize === 0) {
-            const start = index
-            const end = (start + batchSize > customers.length) ? customers.length - 1 : start+batchSize
-            tasks.push((done) => {
-                db.collection('customers').insert(customers.slice(start, end), (error, results) => {
-                    done(error, results)
-                })
+    })
+
+    let batches = partition(customers, batchSize)
+    console.log(`number of batches: ${batches.length}`)
+    batches.forEach((batch, index) => {
+        tasks.push((done) => {
+            db.collection('customers').insert(batch, (error, results) => {
+                done(error, results)
             })
-        }
+        })
     })
 
     console.log('running tasks')
