@@ -1,0 +1,14 @@
+version: "3"
+
+services:
+  app:
+    build: src
+    ports:
+      - "8000:8000"
+      - "5858:5858"
+    links:
+      - database
+  database:
+    image: mongo
+    ports:
+      - "27017:27017"
